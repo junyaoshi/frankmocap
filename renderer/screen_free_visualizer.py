@@ -66,6 +66,22 @@ class Visualizer(object):
         res_img = rend_img[:h, :w, :]
         return res_img
 
+    def render_pred_verts(self, img_original, pred_mesh_list):
+        assert max(img_original.shape) <= self.input_size, \
+            f"Currently, we donlt support images size larger than:{self.input_size}"
+
+        res_img = img_original.copy()
+        rend_img = np.ones((self.input_size, self.input_size, 3))
+        h, w = img_original.shape[:2]
+        rend_img[:h, :w, :] = img_original
+
+        for mesh in pred_mesh_list:
+            verts = mesh['vertices']
+            faces = mesh['faces']
+            rend_img = self.renderer.render(verts, faces, rend_img)
+
+        res_img = rend_img[:h, :w, :]
+        return res_img
 
     def visualize(self, 
         input_img, 
