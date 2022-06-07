@@ -32,6 +32,8 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
         out_dirs = [osp.join(args.out_parent_dir, d) for d in os.listdir(args.input_dir)]
 
     for input_path, out_dir in tqdm(zip(input_paths, out_dirs), desc='Going through input paths...'):
+        if os.path.exists(out_dir):
+            continue
         #Set up input data (images or webcam)
         args.input_path = input_path
         args.out_dir = out_dir
@@ -123,8 +125,11 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
                 continue
 
             # Hand Pose Regression
-            pred_output_list = hand_mocap.regress(
-                    img_original_bgr, hand_bbox_list, add_margin=True)
+            try:
+                pred_output_list = hand_mocap.regress(
+                        img_original_bgr, hand_bbox_list, add_margin=True)
+            except:
+                continue
             assert len(hand_bbox_list) == len(body_bbox_list)
             assert len(body_bbox_list) == len(pred_output_list)
 

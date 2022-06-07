@@ -8,6 +8,7 @@ import subprocess
 import argparse
 
 from ss_utils.ss_dataset import generate_vid_list_from_tasks, convert_videos_to_frames
+from ss_utils.filter_utils import filter_data_by_IoU_threshold
 
 TASK_TEMPLATES = {
     # "Closing [something]": 0,
@@ -15,7 +16,7 @@ TASK_TEMPLATES = {
     # "Moving [something] towards the camera": 2,
     # "Opening [something]": 3,
     "Pushing [something] from left to right": 4,
-    "Pushing [something] from right to left": 5,
+    # "Pushing [something] from right to left": 5,
     # "Poking [something] so lightly that it doesn't or almost doesn't move": 6,
     # "Moving [something] down": 7,
     # "Moving [something] up": 8,
@@ -26,7 +27,10 @@ TASK_TEMPLATES = {
     # "Plugging [something] into [something]": 13,
     # "Pushing [something] so that it slightly moves": 14
 }
-SPLITS = ['valid']
+SPLITS = [
+    'train',
+    'valid'
+]
 
 def parse_args():
     """
@@ -48,6 +52,9 @@ def parse_args():
     parser.add_argument('--task_name', dest='task_name', type=str, required=True,
                         help='name for the tasks being processed',
                         default=None)
+    parser.add_argument('--iou_thresh', dest='iou_thresh', type=float, required=True,
+                        help='threshold for filtering data with hand and mesh bbox IoU',
+                        default=0.7)
     parser.add_argument('--debug', dest='debug', action='store_true',
                         help='if true, then will only process 10 videos for debugging')
     args = parser.parse_args()
@@ -99,21 +106,29 @@ def main(args, task_templates, splits=('train', 'valid')):
         # extract 3D hand pose from bounding boxes and save them to pkl
         print(f'Converting bounding boxes to 3D hand poses for {split} split.')
         mocap_output_dir = join(args.data_save_dir, args.task_name, split, 'mocap_output')
-        if os.path.exists(mocap_output_dir):
-            print('Mocap output directory already exists. Skip bounding box to 3d hand pose conversion...')
-        else:
-            fm_python_path = join(args.conda_root, 'envs/frankmocap/bin/python')
-            fm_command = f"xvfb-run -a {fm_python_path} -m demo.demo_handmocap "
-            fm_command += f"--input_dir={bbs_json_dir} "
-            fm_command += f"--out_parent_dir={mocap_output_dir} "
-            fm_command += f"--save_pred_pkl --save_mesh "
-            p = subprocess.Popen(fm_command, shell=True)
-            p.communicate()
+        fm_python_path = join(args.conda_root, 'envs/frankmocap/bin/python')
+        fm_command = f"xvfb-run -a {fm_python_path} -m demo.demo_handmocap "
+        fm_command += f"--input_dir={bbs_json_dir} "
+        fm_command += f"--out_parent_dir={mocap_output_dir} "
+        fm_command += f"--save_pred_pkl --save_mesh "
+        p = subprocess.Popen(fm_command, shell=True)
+        p.communicate()
 
+        # filter data by IoU threshold
+        print(f'Filtering data using {args.iou_thresh} IoU threshold for {split} split.')
+        iou_json_path = join(args.data_save_dir, args.task_name, split, f'IoU_{args.iou_thresh}.json')
+        if os.path.exists(iou_json_path):
+            print('IoU json path already exists. Skip filtering data by IoU...')
+        else:
+            filter_data_by_IoU_threshold(
+                data_dir=join(args.data_save_dir, args.task_name, split),
+                IoU_thresh=args.iou_thresh,
+                json_path=iou_json_path
+            )
 
 if __name__ == '__main__':
     start = time.time()
     args = parse_args()
     main(args, task_templates=TASK_TEMPLATES, splits=SPLITS)
     end = time.time()
-    print(f'Done. Time elapsed: {end - start}')
+    print(f'Done. Time elapsed: {end - start} seconds')
