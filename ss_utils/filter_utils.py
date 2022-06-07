@@ -2,6 +2,7 @@ import json
 import os
 from os.path import join
 import pickle
+import shutil
 
 import numpy as np
 from tqdm import tqdm
@@ -13,9 +14,8 @@ import torch
 
 import mocap_utils.demo_utils as demo_utils
 from renderer.image_utils import draw_hand_bbox
-from renderer.screen_free_visualizer import Visualizer
 
-DATA_DIR = '/home/junyao/Datasets/something_something_new_3d'
+DATA_DIR = '/home/junyao/Datasets/something_something_processed/push_left_right'
 
 
 def get_3d_hand_pose(hand_info):
@@ -192,7 +192,7 @@ def calculate_box_iou(hand_bbox_list, mesh_bbox_list):
     return np.mean(ious)
 
 
-def visualize_frame_IoU(frame_pkl_path, res_img_path):
+def visualize_frame_IoU(frame_pkl_path, res_img_path, visualizer):
     """Visualize the IoU of hand and mesh bboxes; Save result image"""
     hand_info = load_hand_info_from_pkl(frame_pkl_path)
     hand_bbox_list = hand_info['hand_bbox_list']
@@ -216,6 +216,85 @@ def visualize_frame_IoU(frame_pkl_path, res_img_path):
     print(f"Visualization saved: {res_img_path}")
 
 
+def generate_frame_IoU_histogram(histogram_path):
+    IoUs = []
+    train_mocap_output_dir = join(DATA_DIR, 'train', 'mocap_output')
+    train_vid_dirs = [join(train_mocap_output_dir, d) for d in os.listdir(train_mocap_output_dir)]
+    valid_mocap_output_dir = join(DATA_DIR, 'valid', 'mocap_output')
+    valid_vid_dirs = [join(valid_mocap_output_dir, d) for d in os.listdir(valid_mocap_output_dir)]
+    vid_dirs = train_vid_dirs + valid_vid_dirs
+    for vid_dir in tqdm(
+            vid_dirs,
+            desc='Going through video directories to generate IoU threshold...'
+    ):
+        vid_mocap_dir = join(vid_dir, 'mocap')
+        frame_pkl_paths = [join(vid_mocap_dir, d) for d in os.listdir(vid_mocap_dir)]
+        for frame_pkl_path in frame_pkl_paths:
+            hand_info = load_hand_info_from_pkl(frame_pkl_path)
+            hand_bbox_list = hand_info['hand_bbox_list']
+            mesh_bbox_list = extract_mesh_bbox_list(hand_info)
+            IoU = calculate_box_iou(hand_bbox_list, mesh_bbox_list)
+            IoUs.append(IoU)
+
+    # plot histogram
+    plt.hist(IoUs, bins=20)
+    plt.savefig(histogram_path)
+    plt.show()
+    plt.close()
+
+
+def filter_data_by_IoU_threshold(data_dir, IoU_thresh, json_path):
+    print(f'Processing {data_dir} by IoU threshold.')
+
+    json_dict = {}
+    num_valid_data = 0
+    num_data = 0
+    mocap_output_dir = join(data_dir, 'mocap_output')
+    vid_nums = [d for d in os.listdir(mocap_output_dir)]
+    for vid_num in tqdm(
+            vid_nums,
+            desc='Going through video directories to filter data by IoU threshold...'
+    ):
+        vid_dir = join(mocap_output_dir, vid_num)
+        vid_mocap_dir = join(vid_dir, 'mocap')
+        frame_pkl_fnames = [d for d in os.listdir(vid_mocap_dir)]
+        for frame_pkl_fname in frame_pkl_fnames:
+            num_data += 1
+            frame_pkl_path = join(vid_mocap_dir, frame_pkl_fname)
+            hand_info = load_hand_info_from_pkl(frame_pkl_path)
+            hand_bbox_list = hand_info['hand_bbox_list']
+            mesh_bbox_list = extract_mesh_bbox_list(hand_info)
+            IoU = calculate_box_iou(hand_bbox_list, mesh_bbox_list)
+            if IoU >= IoU_thresh:
+                num_valid_data += 1
+                frame_num = frame_pkl_fname.split('_')[0][5:]
+                if vid_num in json_dict:
+                    json_dict[vid_num].append(frame_num)
+                else:
+                    json_dict[vid_num] = [frame_num]
+
+    print(f'There are {num_valid_data} valid data out of {num_data} data.')
+    print(f'Success rate is {num_valid_data / num_data :.4f}.')
+    with open(json_path, 'w') as f:
+        json.dump(json_dict, f)
+
+
+def create_rendered_image_dir_from_json(json_path, image_dir):
+    os.makedirs(image_dir, exist_ok=True)
+    with open(json_path, 'r') as f:
+        json_dict = json.load(f)
+
+    mocap_output_dir = join(DATA_DIR, 'valid', 'mocap_output')
+    for vid_num in tqdm(
+            json_dict,
+            desc='Going through json to create rendered image directory'
+    ):
+        vid_dir = join(mocap_output_dir, vid_num)
+        for frame_num in json_dict[vid_num]:
+            frame_rendered_img_path = join(vid_dir, 'rendered', f'frame{frame_num}.jpg')
+            dst_img_path = join(image_dir, f'vid{vid_num}_frame{frame_num}.jpg')
+            shutil.copyfile(frame_rendered_img_path, dst_img_path)
+
 if __name__ == '__main__':
     # # Test delta hand pose vid generation
     # generate_delta_hand_pose_vid(vid_num=0)
@@ -229,13 +308,25 @@ if __name__ == '__main__':
     # hand_info = load_hand_info_from_pkl(frame_pkl_path)
     # extract_mesh_bbox(hand_info)
 
-    # Test mesh bbox extraction on mocap_output
-    vid_num = 0
-    vid_mocap_dir = join('..', 'mocap_output_3rd', str(vid_num), 'mocap')
-    visualizer = Visualizer('opendr')
-    for frame_num in tqdm(range(1, 39), desc='Going through frames..'):
-        frame_pkl_path = join(vid_mocap_dir, f'frame{frame_num}_prediction_result.pkl')
-        res_img_dir = join('..', 'mocap_output_3rd', str(vid_num), 'hand_mesh_bbox')
-        os.makedirs(res_img_dir, exist_ok=True)
-        res_img_path = join(res_img_dir, f'frame{frame_num}.jpg')
-        visualize_frame_IoU(frame_pkl_path, res_img_path)
+    # # Test mesh bbox extraction on mocap_output
+    # vid_num = 0
+    # vid_mocap_dir = join('..', 'mocap_output_3rd', str(vid_num), 'mocap')
+    # visualizer = Visualizer('opendr')
+    # for frame_num in tqdm(range(1, 39), desc='Going through frames..'):
+    #     frame_pkl_path = join(vid_mocap_dir, f'frame{frame_num}_prediction_result.pkl')
+    #     res_img_dir = join('..', 'mocap_output_3rd', str(vid_num), 'hand_mesh_bbox')
+    #     os.makedirs(res_img_dir, exist_ok=True)
+    #     res_img_path = join(res_img_dir, f'frame{frame_num}.jpg')
+    #     visualize_frame_IoU(frame_pkl_path, res_img_path, visualizer)
+
+    # Test histogram generation
+    generate_frame_IoU_histogram(histogram_path='../mocap_output/ps_lr_train_valid_iou_hist.png')
+
+    # # Test filter data by IoU threshold
+    # IoU_thresh = 0.7
+    # filter_data_by_IoU_threshold(IoU_thresh=IoU_thresh,
+    #                              json_path=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}.json'))
+    #
+    # create_rendered_image_dir_from_json(json_path=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}.json'),
+    #                                     image_dir=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}_rendered'))
+

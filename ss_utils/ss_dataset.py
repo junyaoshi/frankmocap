@@ -118,8 +118,8 @@ if __name__ == '__main__':
         # "Moving [something] away from the camera": 1,
         # "Moving [something] towards the camera": 2,
         # "Opening [something]": 3,
-        "Pushing [something] from left to right": 4,
-        "Pushing [something] from right to left": 5,
+        # "Pushing [something] from left to right": 4,
+        # "Pushing [something] from right to left": 5,
         # "Poking [something] so lightly that it doesn't or almost doesn't move": 6,
         # "Moving [something] down": 7,
         # "Moving [something] up": 8,
@@ -128,7 +128,7 @@ if __name__ == '__main__':
         # "Pushing [something] with [something]": 11,
         # "Moving [something] closer to [something]": 12,
         # "Plugging [something] into [something]": 13,
-        # "Pushing [something] so that it slightly moves": 14
+        "Pushing [something] so that it slightly moves": 14
     }
     ss_json_dir = "/home/junyao/Datasets/something_something_original"
     train_dict, valid_dict = generate_vid_list_from_tasks(ss_json_dir, task_templates)
