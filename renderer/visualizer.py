@@ -141,6 +141,30 @@ class Visualizer(object):
 
         return overlaidImg
 
+    def render_pred_verts(self, img_original, pred_mesh_list):
+
+        res_img = img_original.copy()
+
+        pred_mesh_list_offset =[]
+        for mesh in pred_mesh_list:
+
+            # Mesh vertices have in image cooridnate (left, top origin)
+            # Move the X-Y origin in image center
+            mesh_offset = mesh['vertices'].copy()
+            mesh_offset[:,0] -= img_original.shape[1]*0.5
+            mesh_offset[:,1] -= img_original.shape[0]*0.5
+            pred_mesh_list_offset.append( {'ver': mesh_offset, 'f':mesh['faces'] })# verts = mesh['vertices']
+            # faces = mesh['faces']
+        if self.rendererType =="opengl_gui":
+            self._visualize_gui_naive(pred_mesh_list_offset, img_original=res_img)
+            overlaidImg = None
+        else:
+            self._visualize_screenless_naive(pred_mesh_list_offset, img_original=res_img)
+            overlaidImg = self.renderout['render_camview']
+            # sideImg = self.renderout['render_sideview']
+
+        return overlaidImg
+
 
     def _visualize_screenless_naive(self, meshList, skelList=None, body_bbox_list=None, img_original=None, show_side = False, vis=False, maxHeight = 1080):
         
