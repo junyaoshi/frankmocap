@@ -7,7 +7,7 @@ import itertools
 import subprocess
 import argparse
 
-from ss_utils.ss_dataset import generate_vid_list_from_tasks, convert_videos_to_frames
+from ss_utils.ss_dataset import generate_vid_list_from_tasks, convert_videos_to_frames, save_img_shape_to_mocap
 from ss_utils.filter_utils import filter_data_by_IoU_threshold
 
 TASK_TEMPLATES = {
@@ -15,10 +15,10 @@ TASK_TEMPLATES = {
     # "Moving [something] away from the camera": 1,
     # "Moving [something] towards the camera": 2,
     # "Opening [something]": 3,
-    "Pushing [something] from left to right": 4,
+    # "Pushing [something] from left to right": 4,
     # "Pushing [something] from right to left": 5,
     # "Poking [something] so lightly that it doesn't or almost doesn't move": 6,
-    # "Moving [something] down": 7,
+    "Moving [something] down": 7,
     # "Moving [something] up": 8,
     # "Pulling [something] from left to right": 9,
     # "Pulling [something] from right to left": 10,
@@ -55,6 +55,8 @@ def parse_args():
     parser.add_argument('--iou_thresh', dest='iou_thresh', type=float, required=True,
                         help='threshold for filtering data with hand and mesh bbox IoU',
                         default=0.7)
+    parser.add_argument('--run_on_cv_server', action='store_true',
+                        help='if true, run tasks on cv-server; else, run all tasks on cluster')
     parser.add_argument('--debug', dest='debug', action='store_true',
                         help='if true, then will only process 10 videos for debugging')
     args = parser.parse_args()
@@ -92,16 +94,13 @@ def main(args, task_templates, splits=('train', 'valid')):
         # extract bounding boxes from frames and save them to json
         print(f'Converting frame images to bounding boxes for {split} split.')
         bbs_json_dir = join(args.data_save_dir, args.task_name, split, 'bbs_json')
-        if os.path.exists(bbs_json_dir):
-            print('Bounding box directory already exists. Skip frame to bounding box conversion...')
-        else:
-            fm_python_path = join(args.conda_root, 'envs/frankmocap/bin/python')
-            bb_command = f"{fm_python_path} demo_ss.py --cuda "
-            bb_command += f"--image_parent_dir={frames_dir} "
-            bb_command += f"--json_save_dir={bbs_json_dir} "
-            cwd = "/home/junyao/LfHV/hand_object_detector"
-            p = subprocess.Popen(bb_command, shell=True, cwd=cwd)
-            p.communicate()
+        fm_python_path = join(args.conda_root, 'envs/frankmocap/bin/python')
+        bb_command = f"{fm_python_path} demo_ss.py --cuda "
+        bb_command += f"--image_parent_dir={frames_dir} "
+        bb_command += f"--json_save_dir={bbs_json_dir} "
+        cwd = "/home/junyao/LfHV/hand_object_detector"
+        p = subprocess.Popen(bb_command, shell=True, cwd=cwd)
+        p.communicate()
 
         # extract 3D hand pose from bounding boxes and save them to pkl
         print(f'Converting bounding boxes to 3D hand poses for {split} split.')
@@ -113,6 +112,10 @@ def main(args, task_templates, splits=('train', 'valid')):
         fm_command += f"--save_pred_pkl --save_mesh "
         p = subprocess.Popen(fm_command, shell=True)
         p.communicate()
+
+        # save image shapes to mocap output pkl files
+        print(f'Saving image shapes to mocap output pkl files')
+        save_img_shape_to_mocap(mocap_parent_dir=mocap_output_dir, run_on_cv_server=args.run_on_cv_server)
 
         # filter data by IoU threshold
         print(f'Filtering data using {args.iou_thresh} IoU threshold for {split} split.')
