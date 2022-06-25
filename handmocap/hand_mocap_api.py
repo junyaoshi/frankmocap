@@ -13,7 +13,8 @@ from mocap_utils.coordconv import convert_smpl_to_bbox, convert_bbox_to_oriIm
 
 
 class HandMocap:
-    def __init__(self, regressor_checkpoint, smpl_dir, device = torch.device('cuda') , use_smplx = False):
+    def __init__(self, regressor_checkpoint, smpl_dir,
+                 device=torch.device('cuda'), use_smplx=False, batch_size=1):
         #For image transform
         transform_list = [ transforms.ToTensor(),
                           transforms.Normalize((0.5, 0.5, 0.5),
@@ -30,7 +31,7 @@ class HandMocap:
         self.opt.model_root = "./extra_data"
         self.opt.smplx_model_file = os.path.join(smpl_dir,'SMPLX_NEUTRAL.pkl')
 
-        self.opt.batchSize = 1
+        self.opt.batchSize = batch_size
         self.opt.phase = "test"
         self.opt.nThreads = 0
         self.opt.which_epoch = -1
@@ -48,6 +49,7 @@ class HandMocap:
 
 
     def __pad_and_resize(self, img, hand_bbox, add_margin, final_size=224):
+        # print(f'img: {img.shape}')
         ori_height, ori_width = img.shape[:2]
         min_x, min_y = hand_bbox[:2].astype(np.int32)
         width, height = hand_bbox[2:].astype(np.int32)
@@ -73,6 +75,7 @@ class HandMocap:
 
         img_cropped = img[int(min_y):int(max_y), int(min_x):int(max_x), :]
         new_size = max(max_x-min_x, max_y-min_y)
+        # print(f'new_size: {new_size}')
         new_img = np.zeros((new_size, new_size, 3), dtype=np.uint8)
         # new_img = np.zeros((new_size, new_size, 3))
         new_img[:(max_y-min_y), :(max_x-min_x), :] = img_cropped
@@ -85,7 +88,7 @@ class HandMocap:
         return new_img, ratio, (min_x, min_y, max_x-min_x, max_y-min_y)
   
 
-    def __process_hand_bbox(self, raw_image, hand_bbox, hand_type, add_margin=True):
+    def process_hand_bbox(self, raw_image, hand_bbox, hand_type, add_margin=True):
         """
         args: 
             original image, 
@@ -100,6 +103,7 @@ class HandMocap:
         """
         # print("hand_type", hand_type)
 
+        # print(f'raw_image: {raw_image.shape}')
         assert hand_type in ['left_hand', 'right_hand']
         img_cropped, bbox_scale_ratio, bbox_processed = \
             self.__pad_and_resize(raw_image, hand_bbox, add_margin)
@@ -159,7 +163,7 @@ class HandMocap:
                     continue
                 else:
                     img_cropped, norm_img, bbox_scale_ratio, bbox_processed = \
-                        self.__process_hand_bbox(img_original, hand_bboxes[hand_type], hand_type, add_margin)
+                        self.process_hand_bbox(img_original, hand_bboxes[hand_type], hand_type, add_margin)
                     hand_bboxes_processed[hand_type] = bbox_processed
 
                     with torch.no_grad():
