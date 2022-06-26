@@ -12,13 +12,13 @@ from ss_utils.filter_utils import filter_data_by_IoU_threshold
 
 TASK_TEMPLATES = {
     # "Closing [something]": 0,
-    # "Moving [something] away from the camera": 1,
+    "Moving [something] away from the camera": 1,
     # "Moving [something] towards the camera": 2,
     # "Opening [something]": 3,
     # "Pushing [something] from left to right": 4,
     # "Pushing [something] from right to left": 5,
     # "Poking [something] so lightly that it doesn't or almost doesn't move": 6,
-    "Moving [something] down": 7,
+    # "Moving [something] down": 7,
     # "Moving [something] up": 8,
     # "Pulling [something] from left to right": 9,
     # "Pulling [something] from right to left": 10,
@@ -114,7 +114,7 @@ def main(args, task_templates, splits=('train', 'valid')):
         p.communicate()
 
         # save image shapes to mocap output pkl files
-        print(f'Saving image shapes to mocap output pkl files')
+        print(f'Saving image shapes to mocap output pkl files for {split} split.')
         save_img_shape_to_mocap(mocap_parent_dir=mocap_output_dir, run_on_cv_server=args.run_on_cv_server)
 
         # filter data by IoU threshold

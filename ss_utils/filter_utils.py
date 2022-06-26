@@ -91,7 +91,9 @@ def plot_delta_hand_pose(vid_joints_smpl, vid_joints_position, vid_joints_angle,
 
 
 def load_hand_info_from_pkl(pkl_path):
-    return pickle.load(open(pkl_path, 'rb'))
+    with open(pkl_path, 'rb') as f:
+        hand_info = pickle.load(f)
+    return hand_info
 
 
 def generate_delta_hand_pose_vid(vid_num):

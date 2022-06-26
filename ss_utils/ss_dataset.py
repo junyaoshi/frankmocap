@@ -97,6 +97,7 @@ def convert_videos_to_frames(all_video_names, ss_vids_dir, frames_dir):
     # all_video_names = tf.io.gfile.listdir(_VIDEO_DIR)
     num_videos = len(all_video_names)
     num_cpus = mp.cpu_count()
+    print(f'Processing {num_videos} videos with {num_cpus} cpus.')
 
     # split into multiple jobs
     splits = list(range(0, num_videos, math.ceil(num_videos / num_cpus)))
@@ -120,7 +121,11 @@ def single_process_save_img_shape_to_mocap(video_mocap_dirs, run_on_cv_server):
         frame_mocap_paths = [join(video_mocap_dir, p) for p in os.listdir(video_mocap_dir)]
         for frame_mocap_path in frame_mocap_paths:
             with open(frame_mocap_path, 'rb') as f:
-                hand_info = pickle.load(f)
+                try:
+                    hand_info = pickle.load(f)
+                except EOFError as e:
+                    print(f'Encountered empty pickle file: {frame_mocap_path}.')
+                    raise e
             if 'image_shape' in hand_info:
                 continue
             image_path = hand_info['image_path']
@@ -137,6 +142,7 @@ def save_img_shape_to_mocap(mocap_parent_dir, run_on_cv_server):
     all_video_mocap_dirs = [join(mocap_parent_dir, d)for d in os.listdir(mocap_parent_dir)]
     num_videos = len(all_video_mocap_dirs)
     num_cpus = mp.cpu_count()
+    print(f'Processing {num_videos} mocap dirs with {num_cpus} cpus under: \n{mocap_parent_dir}.')
 
     splits, n_videos_left, n_cpus_left = [0], num_videos, num_cpus
     while n_videos_left:

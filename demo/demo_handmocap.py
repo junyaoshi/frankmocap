@@ -26,10 +26,12 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
         input_paths = [args.input_path]
         assert args.out_dir is not None, "Please specify output dir to store the results"
         out_dirs = [args.out_dir]
+        print(f'There are {len(input_paths)} total input paths.')
     else:
         assert args.out_parent_dir is not None, "Please specify output parent dir to store the results"
         input_paths = [osp.join(args.input_dir, d) for d in os.listdir(args.input_dir)]
         out_dirs = [osp.join(args.out_parent_dir, d) for d in os.listdir(args.input_dir)]
+        print(f'There are {len(input_paths)} total input paths under \n{args.input_dir}.')
 
     for input_path, out_dir in tqdm(zip(input_paths, out_dirs), desc='Going through input paths...'):
         if os.path.exists(out_dir):
@@ -37,7 +39,12 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
         #Set up input data (images or webcam)
         args.input_path = input_path
         args.out_dir = out_dir
-        input_type, input_data = demo_utils.setup_input(args)
+        try:
+            input_type, input_data = demo_utils.setup_input(args)
+        except AssertionError as e:
+            print(f'Encountered AssertionError while processing: \n{input_path}. \nSkipping this input path.')
+            print(e)
+            continue
 
         assert args.out_dir is not None, "Please specify output dir to store the results"
         cur_frame = args.start_frame
