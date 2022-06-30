@@ -1,19 +1,19 @@
 #!/bin/bash
 #SBATCH --mem-per-gpu=24G
-#SBATCH --partition=dineshj-compute
-#SBATCH --qos=dineshj-high
-#SBATCH --cpus-per-gpu=4
-#SBATCH --time=24:00:00
+#SBATCH --partition=compute
+#SBATCH --qos=low
+#SBATCH --cpus-per-gpu=32
+#SBATCH --time=8:00:00
 #SBATCH --gpus=1
-#SBATCH -w node-3090-0
-#SBATCH --job-name=ps_r
-#SBATCH -o out/push_right_train_valid.out
+#SBATCH -w node-a6000-1
+#SBATCH --job-name=mv_aw
+#SBATCH -o out/move_sth_away_sth_train_valid.out
 
 export SS_JSON_DIR="/home/junyao/something_something_jsons"
 export SS_VIDS_DIR="/Datasets/something_something/something_something"
 export DATA_SAVE_DIR="/scratch/junyao/Datasets/something_something_processed"
 export CONDA_ROOT="/scratch/junyao/anaconda3"
-export TASK_NAME="push_right"
+export TASK_NAME="move_sth_away_sth"
 export IOU_THRESH=0.7
 
 echo "SS_JSON_DIR: ${SS_JSON_DIR}"
@@ -32,3 +32,4 @@ python /home/junyao/LfHV/frankmocap/ss_vid_to_3d_full_pipeline.py \
 --iou_thresh=${IOU_THRESH}
 
 wait
+exit 3

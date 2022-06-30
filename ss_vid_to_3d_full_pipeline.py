@@ -10,7 +10,7 @@ import argparse
 from ss_utils.ss_dataset import generate_vid_list_from_tasks, convert_videos_to_frames, save_img_shape_to_mocap
 from ss_utils.filter_utils import filter_data_by_IoU_threshold
 
-TASK_TEMPLATES = {
+DVD_TASK_TEMPLATES = {
     # "Closing [something]": 0,
     "Moving [something] away from the camera": 1,
     # "Moving [something] towards the camera": 2,
@@ -26,6 +26,16 @@ TASK_TEMPLATES = {
     # "Moving [something] closer to [something]": 12,
     # "Plugging [something] into [something]": 13,
     # "Pushing [something] so that it slightly moves": 14
+}
+ADDITIONAL_TASK_TEMPLATES = {
+    # "Poking [something] so it slightly moves": 0,
+    # "Picking [something] up": 1,
+    # "Putting [something] on a surface": 2,
+    # "Holding [something]": 3,
+    # "Lifting [something] up completely without letting it drop down": 4,
+    # "Moving [something] closer to [something]": 5,
+    "Moving [something] away from [something]": 6
+
 }
 SPLITS = [
     'train',
@@ -66,8 +76,8 @@ def parse_args():
 def main(args, task_templates, splits=('train', 'valid')):
     assert splits
     print('Begin video to 3D hand pose conversion.')
-    print(f'The specified tasks are: \n{TASK_TEMPLATES}')
-    print(f'The specified splits are: {SPLITS}')
+    print(f'The specified tasks are: \n{task_templates}')
+    print(f'The specified splits are: {splits}')
 
     train_dict, valid_dict = generate_vid_list_from_tasks(args.ss_json_dir, task_templates)
     dicts = {}
@@ -132,6 +142,6 @@ def main(args, task_templates, splits=('train', 'valid')):
 if __name__ == '__main__':
     start = time.time()
     args = parse_args()
-    main(args, task_templates=TASK_TEMPLATES, splits=SPLITS)
+    main(args, task_templates=ADDITIONAL_TASK_TEMPLATES, splits=SPLITS)
     end = time.time()
     print(f'Done. Time elapsed: {end - start} seconds')
