@@ -32,6 +32,20 @@ TASK_TEMPLATES = {
 }  # these are the tasks used by DVD paper
 
 
+def generate_example_data_from_task(task, ss_json_dir):
+    # load json
+    train_list = json.load(open(join(ss_json_dir, 'something-something-v2-train.json'), 'r'))
+    # valid_list = json.load(open(join(ss_json_dir, 'something-something-v2-validation.json'), 'r'))
+
+    # split generator
+    data = []
+    for train_data in tqdm(train_list, desc='Parsing training json'):
+        if train_data['template'] == task:
+            data.append(train_data)
+        if len(data) == 10:
+            break
+    return data
+
 def generate_vid_list_from_tasks(ss_json_dir, task_templates):
     """
     Args:
@@ -162,53 +176,53 @@ def save_img_shape_to_mocap(mocap_parent_dir, run_on_cv_server):
 
 
 if __name__ == '__main__':
-    # test convert_videos_to_frames
-    task_templates = {
-        # "Closing [something]": 0,
-        # "Moving [something] away from the camera": 1,
-        # "Moving [something] towards the camera": 2,
-        # "Opening [something]": 3,
-        "Pushing [something] from left to right": 4,
-        # "Pushing [something] from right to left": 5,
-        # "Poking [something] so lightly that it doesn't or almost doesn't move": 6,
-        # "Moving [something] down": 7,
-        # "Moving [something] up": 8,
-        # "Pulling [something] from left to right": 9,
-        # "Pulling [something] from right to left": 10,
-        # "Pushing [something] with [something]": 11,
-        # "Moving [something] closer to [something]": 12,
-        # "Plugging [something] into [something]": 13,
-        # "Pushing [something] so that it slightly moves": 14
-    }
-    splits = ('valid')
-    debug = True
-    task_name = 'push_right'
-
-    ss_json_dir = "/home/junyao/Datasets/something_something_original"
-    ss_vids_dir = "/home/junyao/Datasets/something_something_original/something_something"
-    data_save_dir = "/home/junyao/Datasets/something_something_processed"
-
-    train_dict, valid_dict = generate_vid_list_from_tasks(ss_json_dir, task_templates)
-    dicts = {}
-    if 'train' in splits:
-        dicts['train'] = train_dict
-    if 'valid' in splits:
-        dicts['valid'] = valid_dict
-    for split, vid_dict in dicts.items():
-        # convert webm to jpg
-        print(f'Converting videos to frame images for {split} split.')
-        video_nums = list(itertools.chain(*list(vid_dict.values())))
-        if debug:
-            video_nums = video_nums[:10]
-        video_names = [f'{video_num}.webm' for video_num in video_nums]
-        del video_nums
-        frames_dir = join(
-            data_save_dir,
-            task_name,
-            split,
-            'frames'
-        )
-        convert_videos_to_frames(video_names, ss_vids_dir, frames_dir)
+    # # test convert_videos_to_frames
+    # task_templates = {
+    #     # "Closing [something]": 0,
+    #     # "Moving [something] away from the camera": 1,
+    #     # "Moving [something] towards the camera": 2,
+    #     # "Opening [something]": 3,
+    #     "Pushing [something] from left to right": 4,
+    #     # "Pushing [something] from right to left": 5,
+    #     # "Poking [something] so lightly that it doesn't or almost doesn't move": 6,
+    #     # "Moving [something] down": 7,
+    #     # "Moving [something] up": 8,
+    #     # "Pulling [something] from left to right": 9,
+    #     # "Pulling [something] from right to left": 10,
+    #     # "Pushing [something] with [something]": 11,
+    #     # "Moving [something] closer to [something]": 12,
+    #     # "Plugging [something] into [something]": 13,
+    #     # "Pushing [something] so that it slightly moves": 14
+    # }
+    # splits = ('valid')
+    # debug = True
+    # task_name = 'push_right'
+    #
+    # ss_json_dir = "/home/junyao/Datasets/something_something_original"
+    # ss_vids_dir = "/home/junyao/Datasets/something_something_original/something_something"
+    # data_save_dir = "/home/junyao/Datasets/something_something_processed"
+    #
+    # train_dict, valid_dict = generate_vid_list_from_tasks(ss_json_dir, task_templates)
+    # dicts = {}
+    # if 'train' in splits:
+    #     dicts['train'] = train_dict
+    # if 'valid' in splits:
+    #     dicts['valid'] = valid_dict
+    # for split, vid_dict in dicts.items():
+    #     # convert webm to jpg
+    #     print(f'Converting videos to frame images for {split} split.')
+    #     video_nums = list(itertools.chain(*list(vid_dict.values())))
+    #     if debug:
+    #         video_nums = video_nums[:10]
+    #     video_names = [f'{video_num}.webm' for video_num in video_nums]
+    #     del video_nums
+    #     frames_dir = join(
+    #         data_save_dir,
+    #         task_name,
+    #         split,
+    #         'frames'
+    #     )
+    #     convert_videos_to_frames(video_names, ss_vids_dir, frames_dir)
 
     # # test single process save image to pkl
     # run_on_cv_server = True
@@ -219,3 +233,11 @@ if __name__ == '__main__':
     # run_on_cv_server = True
     # mocap_parent_dir = '/home/junyao/Datasets/something_something_processed/push_right/valid/mocap_output'
     # save_img_shape_to_mocap(mocap_parent_dir, run_on_cv_server)
+
+    # generate example data for a specific task
+    data = generate_example_data_from_task(
+        task="Moving [something] away from [something]",
+        ss_json_dir="/home/junyao/Datasets/something_something_original"
+    )
+    for d in data:
+        print(d)
