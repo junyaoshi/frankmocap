@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from os.path import join
 import pickle
 import shutil
@@ -298,37 +299,48 @@ def create_rendered_image_dir_from_json(json_path, image_dir):
             shutil.copyfile(frame_rendered_img_path, dst_img_path)
 
 if __name__ == '__main__':
-    # # Test delta hand pose vid generation
-    # generate_delta_hand_pose_vid(vid_num=0)
+    test_delta_hand_pose_generation = False
+    test_mesh_bbox_extraction = True
+    test_histogram = False
+    test_filter_IoU = False
 
-    # # Test mesh bbox extraction on ss
-    # vid_num = 200
-    # ss_vid_dir = join(DATA_DIR, str(vid_num))
-    # vid_mocap_dir = join(ss_vid_dir, 'mocap')
-    # frame_num = 0
-    # frame_pkl_path = join(vid_mocap_dir, f'frame{frame_num}_prediction_result.pkl')
-    # hand_info = load_hand_info_from_pkl(frame_pkl_path)
-    # extract_mesh_bbox(hand_info)
+    if test_delta_hand_pose_generation:
+        # Test delta hand pose vid generation
+        generate_delta_hand_pose_vid(vid_num=0)
 
-    # # Test mesh bbox extraction on mocap_output
-    # vid_num = 0
-    # vid_mocap_dir = join('..', 'mocap_output_3rd', str(vid_num), 'mocap')
-    # visualizer = Visualizer('opendr')
-    # for frame_num in tqdm(range(1, 39), desc='Going through frames..'):
-    #     frame_pkl_path = join(vid_mocap_dir, f'frame{frame_num}_prediction_result.pkl')
-    #     res_img_dir = join('..', 'mocap_output_3rd', str(vid_num), 'hand_mesh_bbox')
-    #     os.makedirs(res_img_dir, exist_ok=True)
-    #     res_img_path = join(res_img_dir, f'frame{frame_num}.jpg')
-    #     visualize_frame_IoU(frame_pkl_path, res_img_path, visualizer)
+    if test_mesh_bbox_extraction:
+        # Test mesh bbox extraction on mocap_output
+        t0 = time.time()
+        print('Testing mesh bbox extraction')
+        vid_mocap_dir = join(
+            '/home/junyao/Datasets/something_something_hand_demos',
+            'pull_left', 'mocap_output', '2', 'mocap'
+        )
+        print(f'Processing mocap output from: {vid_mocap_dir}')
+        from renderer.screen_free_visualizer import Visualizer
+        visualizer = Visualizer('opendr')
+        # visualizer = None
+        for frame_num in tqdm(range(1, 39), desc='Going through frames..'):
+            frame_pkl_path = join(vid_mocap_dir, f'frame{frame_num}_prediction_result.pkl')
+            res_img_dir = join(
+            '/home/junyao/Datasets/something_something_hand_demos',
+            'pull_left', 'mocap_output', '2', 'hand_mesh_bbox'
+            )
+            os.makedirs(res_img_dir, exist_ok=True)
+            res_img_path = join(res_img_dir, f'frame{frame_num}.jpg')
+            visualize_frame_IoU(frame_pkl_path, res_img_path, visualizer)
+        t1 = time.time()
+        print(f'Done. Time elapsed: {t1 - t0:3f} seconds')
 
-    # Test histogram generation
-    generate_frame_IoU_histogram(histogram_path='../mocap_output/ps_lr_train_valid_iou_hist.png')
+    if test_histogram:
+        # Test histogram generation
+        generate_frame_IoU_histogram(histogram_path='../mocap_output/ps_lr_train_valid_iou_hist.png')
 
-    # # Test filter data by IoU threshold
-    # IoU_thresh = 0.7
-    # filter_data_by_IoU_threshold(IoU_thresh=IoU_thresh,
-    #                              json_path=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}.json'))
-    #
-    # create_rendered_image_dir_from_json(json_path=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}.json'),
-    #                                     image_dir=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}_rendered'))
+    if test_filter_IoU:
+        # Test filter data by IoU threshold
+        IoU_thresh = 0.7
+        filter_data_by_IoU_threshold(IoU_thresh=IoU_thresh,
+                                     json_path=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}.json'))
 
+        create_rendered_image_dir_from_json(json_path=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}.json'),
+                                            image_dir=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}_rendered'))
