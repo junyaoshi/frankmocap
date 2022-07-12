@@ -31,6 +31,9 @@ class DemoOptions():
         parser.add_argument('--pkl_dir', type=str, help='Path of storing pkl files that store the predicted results')
         parser.add_argument('--openpose_dir', type=str,
                             help='Directory of storing the prediction of openpose prediction')
+        parser.add_argument('--hand_demos', action='store_true',
+                            help='if true, data are hand demos; this will affect how input directories are located.'
+                                 'In this scenario, use --input_dir')
 
         # output options
         parser.add_argument('--out_dir', type=str, default=None, help='Folder of output images.')
@@ -40,7 +43,9 @@ class DemoOptions():
         parser.add_argument('--save_bbox_output', action='store_true',
                             help='Save the bboxes in json files (bbox_xywh format)')
         parser.add_argument('--save_pred_pkl', action='store_true',
-                            help='Save the predictions (bboxes, params, meshes in pkl format')
+                            help='Save the predictions (bboxes, params, meshes) in pkl format')
+        parser.add_argument('--save_pred_h5', action='store_true',
+                            help='Save the predictions (bboxes, params, meshes) in hdf5 (.h5) format')
         parser.add_argument("--save_mesh", action='store_true', help="Save the predicted vertices and faces")
         parser.add_argument("--save_frame", action='store_true',
                             help='Save the extracted frames from video input or webcam')

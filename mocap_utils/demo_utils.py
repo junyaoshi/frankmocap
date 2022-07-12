@@ -6,6 +6,7 @@ import cv2
 from collections import OrderedDict
 import mocap_utils.general_utils as gnu
 import numpy as np
+import h5py
 import json
 import subprocess as sp
 
@@ -54,7 +55,7 @@ def __get_input_type(args):
     else:
         assert False, "Unknown input path. It should be an image," + \
             "or an image folder, or a video file, or \'webcam\' "
-    return input_type
+    return extension, input_type
 
 
 def __video_setup(args):
@@ -98,7 +99,7 @@ def setup_input(args):
     video_exts = ('mp4', 'avi', 'mov')
 
     # get type of input 
-    input_type = __get_input_type(args)
+    extension, input_type = __get_input_type(args)
 
     if input_type =='video':
         cap = cv2.VideoCapture(args.input_path)
@@ -117,18 +118,33 @@ def setup_input(args):
         return input_type, image_list
 
     elif input_type =='bbox_dir':
-        __img_seq_setup(args)
-        json_files = gnu.get_all_files(args.input_path, '.json', "relative") 
-        input_data = list()
-        for json_file in json_files:
-            json_path = osp.join(args.input_path, json_file)
-            image_path, body_bbox_list, hand_bbox_list = load_info_from_json(json_path)
-            input_data.append(dict(
-                image_path = image_path,
-                hand_bbox_list = hand_bbox_list,
-                body_bbox_list = body_bbox_list
-            ))
-        return input_type, input_data
+        if extension == 'json':
+            __img_seq_setup(args)
+            json_files = gnu.get_all_files(args.input_path, '.json', "relative")
+            input_data = list()
+            for json_file in json_files:
+                json_path = osp.join(args.input_path, json_file)
+                image_path, body_bbox_list, hand_bbox_list = load_info_from_json(json_path)
+                input_data.append(dict(
+                    image_path = image_path,
+                    hand_bbox_list = hand_bbox_list,
+                    body_bbox_list = body_bbox_list
+                ))
+            return input_type, input_data
+        else:  # 'h5'
+            h5_file = h5py.File(osp.join(args.input_path, '.h5'), 'r')
+            input_data = []
+            for frame_info in h5_file.values():
+                hand_bbox_list = [
+                    {"left_hand": frame_info['hand_bbox_list']['left_hand'][:],
+                     "right_hand": frame_info['hand_bbox_list']['right_hand'][:]}
+                ]
+                input_data.append(dict(
+                    image_path=frame_info.attrs['image_path'],
+                    hand_bbox_list=hand_bbox_list,
+                    body_bbox_list=frame_info['body_bbox_list'][:]
+                ))
+            return input_type, input_data
 
     else:
         assert False, "Unknown input type"

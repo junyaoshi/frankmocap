@@ -22,7 +22,11 @@ import time
 
 
 def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
+    if args.save_pred_h5:
+        raise NotImplementedError
     if args.input_dir is None:
+        if args.hand_demos:
+            pass
         input_paths = [args.input_path]
         assert args.out_dir is not None, "Please specify output dir to store the results"
         out_dirs = [args.out_dir]
