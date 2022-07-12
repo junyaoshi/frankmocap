@@ -33,8 +33,8 @@ ADDITIONAL_TASK_TEMPLATES = {
     # "Putting [something] on a surface": 2,
     # "Holding [something]": 3,
     # "Lifting [something] up completely without letting it drop down": 4,
-    # "Moving [something] closer to [something]": 5,
-    "Moving [something] away from [something]": 6
+    "Moving [something] closer to [something]": 5,
+    # "Moving [something] away from [something]": 6
 
 }
 SPLITS = [

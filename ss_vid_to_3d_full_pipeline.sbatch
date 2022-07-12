@@ -6,14 +6,14 @@
 #SBATCH --time=8:00:00
 #SBATCH --gpus=1
 #SBATCH -w node-a6000-1
-#SBATCH --job-name=mv_aw
-#SBATCH -o out/move_sth_away_sth_train_valid.out
+#SBATCH --job-name=mv_cl
+#SBATCH -o out/move_sth_closer_sth_train_valid.out
 
 export SS_JSON_DIR="/home/junyao/something_something_jsons"
 export SS_VIDS_DIR="/Datasets/something_something/something_something"
 export DATA_SAVE_DIR="/scratch/junyao/Datasets/something_something_processed"
 export CONDA_ROOT="/scratch/junyao/anaconda3"
-export TASK_NAME="move_sth_away_sth"
+export TASK_NAME="move_sth_closer_sth"
 export IOU_THRESH=0.7
 
 echo "SS_JSON_DIR: ${SS_JSON_DIR}"
