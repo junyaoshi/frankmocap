@@ -37,8 +37,10 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
         out_dirs = [osp.join(args.out_parent_dir, d) for d in os.listdir(args.input_dir)]
         print(f'There are {len(input_paths)} total input paths under \n{args.input_dir}.')
 
+    n_processed, n_error, n_nohand, n_skipped = 0, 0, 0, 0
     for input_path, out_dir in tqdm(zip(input_paths, out_dirs), desc='Going through input paths...'):
         if os.path.exists(out_dir):
+            n_error += len(os.listdir(input_path))
             continue
         #Set up input data (images or webcam)
         args.input_path = input_path
@@ -46,6 +48,7 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
         try:
             input_type, input_data = demo_utils.setup_input(args)
         except AssertionError as e:
+            n_error += len(os.listdir(input_path))
             print(f'Encountered AssertionError while processing: \n{input_path}. \nSkipping this input path.')
             print(e)
             continue
@@ -133,6 +136,7 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
 
             if len(hand_bbox_list) < 1:
                 # print(f"No hand deteced: {image_path}")
+                n_nohand += 1
                 continue
 
             # Hand Pose Regression
@@ -140,6 +144,7 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
                 pred_output_list = hand_mocap.regress(
                         img_original_bgr, hand_bbox_list, add_margin=True)
             except:
+                n_error += 1
                 continue
             assert len(hand_bbox_list) == len(body_bbox_list)
             assert len(body_bbox_list) == len(pred_output_list)
@@ -168,6 +173,7 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
                 demo_utils.save_pred_to_pkl(
                     args, demo_type, image_path, body_bbox_list, hand_bbox_list, pred_output_list)
 
+            n_processed += 1
             # print(f"Processed : {image_path}")
 
         #save images as a video
@@ -178,6 +184,13 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
         if input_type =='webcam' and input_data is not None:
             input_data.release()
         cv2.destroyAllWindows()
+
+    print(f'Converted bounding boxes to 3D hand poses. '
+          f'Total frames: {n_processed + n_error + n_nohand + n_skipped}; '
+          f'Processed frames: {n_processed}; '
+          f'Error frames: {n_error}; '
+          f'No hand frames: {n_nohand}; '
+          f'Skipped frames: {n_skipped}.')
 
   
 def main():

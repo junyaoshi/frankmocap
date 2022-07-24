@@ -247,7 +247,7 @@ def generate_frame_IoU_histogram(histogram_path):
 
 
 def filter_data_by_IoU_threshold(data_dir, IoU_thresh, json_path):
-    print(f'Processing {data_dir} by IoU threshold.')
+    print(f'Processing {data_dir} by IoU threshold {IoU_thresh}.')
 
     json_dict = {}
     num_valid_data = 0
@@ -276,7 +276,7 @@ def filter_data_by_IoU_threshold(data_dir, IoU_thresh, json_path):
                 else:
                     json_dict[vid_num] = [frame_num]
 
-    print(f'There are {num_valid_data} valid data out of {num_data} data.')
+    print(f'There are {num_valid_data} valid frames out of {num_data} frames.')
     print(f'Success rate is {num_valid_data / num_data :.4f}.')
     with open(json_path, 'w') as f:
         json.dump(json_dict, f)

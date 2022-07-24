@@ -130,6 +130,7 @@ def convert_videos_to_frames(all_video_names, ss_vids_dir, frames_dir):
 
 
 def single_process_save_img_shape_to_mocap(video_mocap_dirs, run_on_cv_server):
+    n_processed, n_error, n_skipped = 0, 0, 0
     for video_mocap_dir in video_mocap_dirs:
         video_mocap_dir = join(video_mocap_dir, 'mocap')
         frame_mocap_paths = [join(video_mocap_dir, p) for p in os.listdir(video_mocap_dir)]
@@ -138,9 +139,11 @@ def single_process_save_img_shape_to_mocap(video_mocap_dirs, run_on_cv_server):
                 try:
                     hand_info = pickle.load(f)
                 except EOFError as e:
+                    n_error += 1
                     print(f'Encountered empty pickle file: {frame_mocap_path}.')
                     raise e
             if 'image_shape' in hand_info:
+                n_skipped += 1
                 continue
             image_path = hand_info['image_path']
             if image_path[:8] == '/scratch' and run_on_cv_server:
@@ -150,6 +153,9 @@ def single_process_save_img_shape_to_mocap(video_mocap_dirs, run_on_cv_server):
             hand_info['image_shape'] = image_shape
             with open(frame_mocap_path, 'wb') as f:
                 pickle.dump(hand_info, f)
+            n_processed += 1
+
+    return n_processed, n_error, n_skipped
 
 
 def save_img_shape_to_mocap(mocap_parent_dir, run_on_cv_server):
@@ -173,6 +179,16 @@ def save_img_shape_to_mocap(mocap_parent_dir, run_on_cv_server):
         r = list(tqdm(p.starmap(
             single_process_save_img_shape_to_mocap, zip(args_list, repeat(run_on_cv_server))
         ), total=num_cpus))
+
+    n_processed, n_error, n_skipped = 0, 0, 0
+    for info in r:
+        n_processed_single, n_error_single, n_skipped_single = info
+        n_processed += n_processed_single
+        n_error += n_error_single
+        n_skipped += n_skipped_single
+
+    print(f'Saved image shapes. Total frames: {n_processed + n_error + n_skipped}; '
+          f'Processed frames: {n_processed}; Empty frames: {n_error}; Skipped frames: {n_skipped}.')
 
 
 if __name__ == '__main__':
