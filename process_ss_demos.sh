@@ -1,5 +1,5 @@
-export DEMOS_DIR="/home/junyao/Datasets/something_something_robot_demos"
-export DEMO_TYPE="robot_demos"
+export DEMOS_DIR="/home/junyao/Datasets/something_something_hand_demos_same_hand"
+export DEMO_TYPE="hand_demos"
 export CONDA_ROOT="/home/junyao/anaconda3"
 export IOU_THRESH=0.7
 

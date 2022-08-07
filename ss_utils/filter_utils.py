@@ -282,6 +282,53 @@ def filter_data_by_IoU_threshold(data_dir, IoU_thresh, json_path):
         json.dump(json_dict, f)
 
 
+def filter_singe_data_by_IoU_threshold(
+        mocap_path,
+        IoU_thresh,
+        json_path,
+        vid_num=None,
+        frame_num=None,
+        mocap_pred=None,
+        verbose=True
+):
+    if verbose:
+        print(f'Processing {mocap_path if mocap_pred is None else "given mocap predictions"} '
+              f'by IoU threshold {IoU_thresh}.')
+
+    json_dict = None
+    if json_path is not None:
+        assert vid_num is not None and frame_num is not None
+        if os.path.exists(json_path):
+            with open(json_path, 'r') as f:
+                json_dict = json.load(f)
+        else:
+            json_dict = {}
+
+    assert mocap_pred is not None or mocap_path is not None
+    if mocap_pred is None:
+        hand_info = load_hand_info_from_pkl(mocap_path)
+    else:
+        hand_info = mocap_pred
+    hand_bbox_list = hand_info['hand_bbox_list']
+    mesh_bbox_list = extract_mesh_bbox_list(hand_info)
+    IoU = calculate_box_iou(hand_bbox_list, mesh_bbox_list)
+    filter_success = False
+    if IoU >= IoU_thresh:
+        filter_success = True
+        if vid_num in json_dict:
+            json_dict[vid_num].append(frame_num)
+        else:
+            json_dict[vid_num] = [frame_num]
+
+    if verbose:
+        print(f'Filtering by IoU threshold successful: {filter_success}.')
+    if json_path is not None:
+        with open(json_path, 'w') as f:
+            json.dump(json_dict, f)
+
+    return IoU, filter_success
+
+
 def create_rendered_image_dir_from_json(json_path, image_dir):
     os.makedirs(image_dir, exist_ok=True)
     with open(json_path, 'r') as f:
