@@ -6,7 +6,7 @@ import subprocess
 from tqdm import tqdm
 from pprint import pprint
 
-from ss_utils.ss_dataset import save_img_shape_to_mocap
+from ss_utils.ss_dataset import save_info_to_mocap
 from ss_utils.filter_utils import filter_data_by_IoU_threshold
 
 
@@ -28,6 +28,8 @@ def parse_args():
     parser.add_argument('--iou_thresh', dest='iou_thresh', type=float, required=True,
                         help='threshold for filtering data with hand and mesh bbox IoU',
                         default=0.7)
+    parser.add_argument('--no_task_labels', action='store_true',
+                        help='set to true if dataset has no task labels')
     args = parser.parse_args()
     return args
 
@@ -35,7 +37,10 @@ def parse_args():
 def main(args):
     print(f'Begin processing something-something {args.demo_type} dataset.')
 
-    task_dirs = [osp.join(args.demos_dir, d) for d in os.listdir(args.demos_dir)]
+    if args.no_task_labels:
+        task_dirs = [args.demos_dir]
+    else:
+        task_dirs = [osp.join(args.demos_dir, d) for d in os.listdir(args.demos_dir)]
     pprint(f'Task directories are: \n{task_dirs}')
     for task_dir in tqdm(task_dirs, desc=f'Processing {len(task_dirs)} task directories...'):
         # extract bounding boxes from frames and save them to h5py
@@ -59,10 +64,11 @@ def main(args):
         p = subprocess.Popen(fm_command, shell=True)
         p.communicate()
 
-        # save image shapes to mocap output pkl files
-        print(f'\nSaving image shapes to mocap output under {osp.join(task_dir, "mocap_output")}.')
-        save_img_shape_to_mocap(
-            mocap_parent_dir=osp.join(task_dir, 'mocap_output'), run_on_cv_server=True
+        # save image shapes and contact to mocap output pkl files
+        print(f'\nSaving image and contact info to mocap output under {osp.join(task_dir, "mocap_output")}.')
+        save_info_to_mocap(
+            mocap_parent_dir=osp.join(task_dir, 'mocap_output'), run_on_cv_server=True,
+            save_img_shape=True, save_contact=True
         )
 
         # filter data by IoU threshold
@@ -79,7 +85,7 @@ def main(args):
             )
 
         # save r3m embeddings
-        r3m_command = f"{fm_python_path} save_r3m_for_ss.py "
+        r3m_command = f"{fm_python_path} utils/save_r3m_for_ss.py "
         r3m_command += f"--input_dir={task_dir} "
         r3m_command += f"--iou_thresh={args.iou_thresh} "
         cwd = "/home/junyao/LfHV/r3m"
