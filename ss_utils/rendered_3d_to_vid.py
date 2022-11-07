@@ -3,14 +3,14 @@ import os
 from os.path import join
 from tqdm import tqdm
 
-
-data_dir = '/home/junyao/Datasets/something_something_new_3d'
-video_nums = os.listdir(data_dir)
+task = 'push_slightly'
+data_dir = f'/home/junyao/Datasets/something_something_hand_demos/{task}'
+video_nums = [1, 2, 3, 4, 5, 6]
 print(f'There are {len(video_nums)} video directories')
 
 for video_num in tqdm(video_nums, desc='Going through video directories...'):
-    rendered_imgs_dir = join(data_dir, video_num, 'rendered')
-    rendered_vid_dir = join(data_dir, video_num, 'rendered_vid')
+    rendered_imgs_dir = join(data_dir, 'mocap_output', str(video_num), 'contact_rendered')
+    rendered_vid_dir = join(data_dir, 'contact_rendered_vid')
     os.makedirs(rendered_vid_dir, exist_ok=True)
     rendered_vid_name = f'rendered_{video_num}.mp4'
 
@@ -20,7 +20,7 @@ for video_num in tqdm(video_nums, desc='Going through video directories...'):
     height, width, layers = frame.shape
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    fps = 6
+    fps = 3
     video = cv2.VideoWriter(join(rendered_vid_dir, rendered_vid_name), fourcc, fps, (width,height))
 
     for image in images:
