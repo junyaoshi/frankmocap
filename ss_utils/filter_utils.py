@@ -19,6 +19,32 @@ from renderer.image_utils import draw_hand_bbox
 DATA_DIR = '/home/junyao/Datasets/something_something_processed/push_left_right'
 
 
+def determine_which_hand(hand_info):
+    left_hand_exists = len(hand_info['pred_output_list'][0]['left_hand']) > 0
+    right_hand_exists = len(hand_info['pred_output_list'][0]['right_hand']) > 0
+    if left_hand_exists and not right_hand_exists:
+        return 'left_hand'
+    if right_hand_exists and not left_hand_exists:
+        return 'right_hand'
+    if left_hand_exists and right_hand_exists:
+        try:
+            # select the hand with the bigger bounding box
+            left_hand_bbox = hand_info['hand_bbox_list'][0]['left_hand']
+            *_, lw, lh = left_hand_bbox
+            right_hand_bbox = hand_info['hand_bbox_list'][0]['right_hand']
+            *_, rw, rh = right_hand_bbox
+        except TypeError as e:
+            print(f'image path: {hand_info["image_path"]}')
+            print(f'hand_bbox_list: {hand_info["hand_bbox_list"]}')
+            raise e
+        if lw * lh >= rw * rh:
+            return 'left_hand'
+        else:
+            return 'right_hand'
+    else:
+        raise ValueError('No hand detected!')
+
+
 def get_3d_hand_pose(hand_info):
     """Get 3D hand pose of a frame"""
     hand = hand_info['pred_output_list'][0]['left_hand'] if len(hand_info['pred_output_list'][0]['left_hand']) > 0 \
@@ -94,6 +120,12 @@ def plot_delta_hand_pose(vid_joints_smpl, vid_joints_position, vid_joints_angle,
 def load_hand_info_from_pkl(pkl_path):
     with open(pkl_path, 'rb') as f:
         hand_info = pickle.load(f)
+    return hand_info
+
+
+def load_hand_info_from_json(json_path):
+    with open(json_path, 'r') as f:
+        hand_info = json.load(f)
     return hand_info
 
 
@@ -219,6 +251,39 @@ def visualize_frame_IoU(frame_pkl_path, res_img_path, visualizer):
     print(f"Visualization saved: {res_img_path}")
 
 
+def visualize_frame_contact(frame_pkl_path, frame_json_path, res_img_path, visualizer):
+    """Visualize the contact variable; Save result image"""
+    hand_info_pkl = load_hand_info_from_pkl(frame_pkl_path)
+    hand_bbox_list = hand_info_pkl['hand_bbox_list']
+    image_path = hand_info_pkl['image_path']
+    if image_path[:8] == '/scratch':
+        image_path = '/home' + image_path[8:]
+    img_original_bgr = cv2.imread(image_path)
+    pred_mesh_list = extract_pred_mesh_list(hand_info_pkl)
+
+    hand_info_json = load_hand_info_from_json(frame_json_path)
+    contact_list = hand_info_json['contact_list']
+    if contact_list[0]['left_hand'] != -1:
+        contact_state = contact_list[0]['left_hand']
+    else:
+        contact_state = contact_list[0]['right_hand']
+    state_map = {0: 'No Contact', 1: 'Self Contact', 2: 'Another Person', 3: 'Portable Object', 4: 'Stationary Object'}
+    contact_str = state_map[contact_state]
+
+    res_img = img_original_bgr.copy()
+    res_img = draw_hand_bbox(res_img, hand_bbox_list)
+    res_img = visualizer.render_pred_verts(res_img, pred_mesh_list)
+
+    white = np.zeros((50, res_img.shape[1], 3), np.uint8)
+    white[:] = (255, 255, 255)
+    res_img = cv2.vconcat((white, res_img))
+    font = cv2.FONT_HERSHEY_COMPLEX
+    cv2.putText(res_img, f'Contact: {contact_str}', (30, 40), font, 0.8, (0, 0, 0), 2, 0)
+
+    cv2.imwrite(res_img_path, res_img)
+    # print(f"Contact: {contact_str}\nVisualization saved: {res_img_path}")
+
+
 def generate_frame_IoU_histogram(histogram_path):
     IoUs = []
     train_mocap_output_dir = join(DATA_DIR, 'train', 'mocap_output')
@@ -315,10 +380,11 @@ def filter_singe_data_by_IoU_threshold(
     filter_success = False
     if IoU >= IoU_thresh:
         filter_success = True
-        if vid_num in json_dict:
-            json_dict[vid_num].append(frame_num)
-        else:
-            json_dict[vid_num] = [frame_num]
+        if json_dict is not None:
+            if vid_num in json_dict:
+                json_dict[vid_num].append(frame_num)
+            else:
+                json_dict[vid_num] = [frame_num]
 
     if verbose:
         print(f'Filtering by IoU threshold successful: {filter_success}.')
@@ -347,9 +413,10 @@ def create_rendered_image_dir_from_json(json_path, image_dir):
 
 if __name__ == '__main__':
     test_delta_hand_pose_generation = False
-    test_mesh_bbox_extraction = True
+    test_mesh_bbox_extraction = False
     test_histogram = False
     test_filter_IoU = False
+    test_contact = True
 
     if test_delta_hand_pose_generation:
         # Test delta hand pose vid generation
@@ -391,3 +458,30 @@ if __name__ == '__main__':
 
         create_rendered_image_dir_from_json(json_path=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}.json'),
                                             image_dir=join(DATA_DIR, 'valid', f'IoU_{IoU_thresh}_rendered'))
+
+    if test_contact:
+        t0 = time.time()
+        print('Testing mesh bbox extraction')
+
+        from renderer.visualizer import Visualizer
+        visualizer = Visualizer('opengl')
+        # visualizer = None
+
+        task = 'push_slightly'
+        vid_nums = [1, 2, 3, 4, 5, 6]
+        for vid_num in vid_nums:
+            vid_mocap_dir = f'/home/junyao/Datasets/something_something_hand_demos/{task}/mocap_output/{vid_num}/mocap'
+            vid_json_dir = f'/home/junyao/Datasets/something_something_hand_demos/{task}/bbs_json/{vid_num}'
+            res_img_dir = f'/home/junyao/Datasets/something_something_hand_demos/{task}/mocap_output/{vid_num}/contact_rendered'
+            print(f'Processing mocap output from: {vid_mocap_dir}')
+            print(f'Processing bbs json from: {vid_json_dir}')
+
+            frame_names = [fname.split('_')[0] for fname in os.listdir(vid_mocap_dir)]
+            for frame_name in tqdm(frame_names, desc='Going through frames'):
+                frame_pkl_path = join(vid_mocap_dir, f'{frame_name}_prediction_result.pkl')
+                frame_json_path = join(vid_json_dir, f'{frame_name}.json')
+                os.makedirs(res_img_dir, exist_ok=True)
+                res_img_path = join(res_img_dir, f'{frame_name}.jpg')
+                visualize_frame_contact(frame_pkl_path, frame_json_path, res_img_path, visualizer)
+            t1 = time.time()
+            print(f'Done. Time elapsed: {t1 - t0:3f} seconds')
