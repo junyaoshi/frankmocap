@@ -39,9 +39,6 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
 
     n_processed, n_error, n_nohand, n_skipped = 0, 0, 0, 0
     for input_path, out_dir in tqdm(zip(input_paths, out_dirs), desc='Going through input paths...'):
-        if os.path.exists(out_dir):
-            n_error += len(os.listdir(input_path))
-            continue
         #Set up input data (images or webcam)
         args.input_path = input_path
         args.out_dir = out_dir
@@ -61,6 +58,7 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
             # load data
             load_bbox = False
 
+            contact_list = None
             if input_type =='image_dir':
                 if cur_frame < len(input_data):
                     image_path = input_data[cur_frame]
@@ -74,6 +72,7 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
                     image_path = input_data[cur_frame]['image_path']
                     hand_bbox_list = input_data[cur_frame]['hand_bbox_list']
                     body_bbox_list = input_data[cur_frame]['body_bbox_list']
+                    contact_list = input_data[cur_frame]['contact_list']
                     img_original_bgr  = cv2.imread(image_path)
                     load_bbox = True
                 else:
@@ -112,6 +111,16 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
             if img_original_bgr is None or cur_frame > args.end_frame:
                 break
             # print("--------------------------------------")
+
+            # check for existing data and skip
+            if args.save_pred_pkl:
+                img_name = osp.basename(image_path)
+                record = img_name.split('.')
+                pkl_name = f"{'.'.join(record[:-1])}_prediction_result.pkl"
+                pkl_path = osp.join(args.out_dir, 'mocap', pkl_name)
+                if osp.exists(pkl_path):
+                    n_skipped += 1
+                    continue
 
             # bbox detection
             if load_bbox:
@@ -156,7 +165,8 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
             res_img = visualizer.visualize(
                 img_original_bgr,
                 pred_mesh_list = pred_mesh_list,
-                hand_bbox_list = hand_bbox_list)
+                hand_bbox_list = hand_bbox_list
+            )
 
             # show result in the screen
             if not args.no_display:
@@ -171,7 +181,9 @@ def run_hand_mocap(args, bbox_detector, hand_mocap, visualizer):
             if args.save_pred_pkl:
                 demo_type = 'hand'
                 demo_utils.save_pred_to_pkl(
-                    args, demo_type, image_path, body_bbox_list, hand_bbox_list, pred_output_list)
+                    args, demo_type, image_path,
+                    body_bbox_list, hand_bbox_list, contact_list, pred_output_list
+                )
 
             n_processed += 1
             # print(f"Processed : {image_path}")

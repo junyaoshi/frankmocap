@@ -54,11 +54,12 @@ def setup_path_input(input_path, out_dir, save_pred_pkl, save_pred_vis):
         raise NotImplementedError
     elif input_type == 'json_file':
         __img_seq_setup(out_dir, save_pred_pkl, save_pred_vis)
-        image_path, body_bbox_list, hand_bbox_list = demo_utils.load_info_from_json(input_path)
+        image_path, body_bbox_list, hand_bbox_list, contact_list = demo_utils.load_info_from_json(input_path)
         input_data = dict(
             image_path=image_path,
             hand_bbox_list=hand_bbox_list,
-            body_bbox_list=body_bbox_list
+            body_bbox_list=body_bbox_list,
+            contact_list=contact_list
         )
         return input_type, input_data
     else:
@@ -71,6 +72,7 @@ def load_info_from_dict(input_dict):
     assert ('image_path' in data), "Path of input image should be specified"
     image_path = data['image_path']
     assert osp.exists(image_path), f"{image_path} does not exists"
+
     # body bboxes
     body_bbox_list = list()
     if 'body_bbox_list' in data:
@@ -79,6 +81,7 @@ def load_info_from_dict(input_dict):
         for b_id, body_bbox in enumerate(body_bbox_list):
             if isinstance(body_bbox, list) and len(body_bbox) == 4:
                 body_bbox_list[b_id] = np.array(body_bbox)
+
     # hand bboxes
     hand_bbox_list = list()
     if 'hand_bbox_list' in data:
@@ -92,16 +95,24 @@ def load_info_from_dict(input_dict):
                         hand_bbox[hand_type] = np.array(bbox)
                     else:
                         hand_bbox[hand_type] = None
-    return image_path, body_bbox_list, hand_bbox_list
+
+    # contact
+    contact_list = []
+    if 'contact_list' in data:
+        contact_list = data['contact_list']
+        assert isinstance(contact_list, list)
+
+    return image_path, body_bbox_list, hand_bbox_list, contact_list
 
 
 def setup_dict_input(input_dict, out_dir, save_pred_pkl, save_pred_vis):
     __img_seq_setup(out_dir, save_pred_pkl, save_pred_vis)
-    image_path, body_bbox_list, hand_bbox_list = load_info_from_dict(input_dict)
+    image_path, body_bbox_list, hand_bbox_list, contact_list = load_info_from_dict(input_dict)
     input_data = dict(
         image_path=image_path,
         hand_bbox_list=hand_bbox_list,
-        body_bbox_list=body_bbox_list
+        body_bbox_list=body_bbox_list,
+        contact_list=contact_list
     )
     return input_data
 
@@ -112,6 +123,7 @@ def create_pred_dict(
         image_shape,
         body_bbox_list,
         hand_bbox_list,
+        contact_list,
         pred_output_list,
         use_smplx=True,
         save_mesh=True
@@ -131,6 +143,8 @@ def create_pred_dict(
     saved_data['image_path'] = osp.abspath(image_path)
     saved_data['body_bbox_list'] = body_bbox_list
     saved_data['hand_bbox_list'] = hand_bbox_list
+    if contact_list is not None:
+        saved_data['contact_list'] = contact_list
     saved_data['save_mesh'] = save_mesh
     saved_data['image_shape'] = image_shape
 
@@ -261,6 +275,9 @@ def run_frame_hand_mocap(
     image_path = input_data['image_path']
     hand_bbox_list = input_data['hand_bbox_list']
     body_bbox_list = input_data['body_bbox_list']
+    contact_list = None
+    if 'contact_list' in input_data:
+        contact_list = input_data['contact_list']
     if img_original_bgr is None:
         img_original_bgr = cv2.imread(image_path)
     image_shape = np.array(img_original_bgr.shape)[:2]
@@ -299,6 +316,7 @@ def run_frame_hand_mocap(
         image_shape=image_shape,
         body_bbox_list=body_bbox_list,
         hand_bbox_list=hand_bbox_list,
+        contact_list=contact_list,
         pred_output_list=pred_output_list,
         use_smplx=use_smplx,
         save_mesh=save_mesh
