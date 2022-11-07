@@ -6,7 +6,7 @@ import cv2
 from collections import OrderedDict
 import mocap_utils.general_utils as gnu
 import numpy as np
-import h5py
+# import h5py
 import json
 import subprocess as sp
 
@@ -124,27 +124,16 @@ def setup_input(args):
             input_data = list()
             for json_file in json_files:
                 json_path = osp.join(args.input_path, json_file)
-                image_path, body_bbox_list, hand_bbox_list = load_info_from_json(json_path)
+                image_path, body_bbox_list, hand_bbox_list, contact_list = load_info_from_json(json_path)
                 input_data.append(dict(
-                    image_path = image_path,
-                    hand_bbox_list = hand_bbox_list,
-                    body_bbox_list = body_bbox_list
+                    image_path=image_path,
+                    hand_bbox_list=hand_bbox_list,
+                    body_bbox_list=body_bbox_list,
+                    contact_list=contact_list
                 ))
             return input_type, input_data
         else:  # 'h5'
-            h5_file = h5py.File(osp.join(args.input_path, '.h5'), 'r')
-            input_data = []
-            for frame_info in h5_file.values():
-                hand_bbox_list = [
-                    {"left_hand": frame_info['hand_bbox_list']['left_hand'][:],
-                     "right_hand": frame_info['hand_bbox_list']['right_hand'][:]}
-                ]
-                input_data.append(dict(
-                    image_path=frame_info.attrs['image_path'],
-                    hand_bbox_list=hand_bbox_list,
-                    body_bbox_list=frame_info['body_bbox_list'][:]
-                ))
-            return input_type, input_data
+            raise NotImplementedError
 
     else:
         assert False, "Unknown input type"
@@ -179,16 +168,18 @@ def load_info_from_json(json_path):
     assert ('image_path' in data), "Path of input image should be specified"
     image_path = data['image_path']
     assert osp.exists(image_path), f"{image_path} does not exists"
+
     # body bboxes
-    body_bbox_list = list()
+    body_bbox_list = []
     if 'body_bbox_list' in data:
         body_bbox_list = data['body_bbox_list']
         assert isinstance(body_bbox_list, list)
         for b_id, body_bbox in enumerate(body_bbox_list):
             if isinstance(body_bbox, list) and len(body_bbox) == 4:
                 body_bbox_list[b_id] = np.array(body_bbox)
+
     # hand bboxes
-    hand_bbox_list = list()
+    hand_bbox_list = []
     if 'hand_bbox_list' in data:
         hand_bbox_list = data['hand_bbox_list']
         assert isinstance(hand_bbox_list, list)
@@ -200,7 +191,14 @@ def load_info_from_json(json_path):
                         hand_bbox[hand_type] = np.array(bbox)
                     else:
                         hand_bbox[hand_type] = None
-    return image_path, body_bbox_list, hand_bbox_list
+
+    # contact
+    contact_list = []
+    if 'contact_list' in data:
+        contact_list = data['contact_list']
+        assert isinstance(contact_list, list)
+
+    return image_path, body_bbox_list, hand_bbox_list, contact_list
 
 
 def save_info_to_json(args, image_path, body_bbox_list, hand_bbox_list):
@@ -242,7 +240,8 @@ def save_info_to_json(args, image_path, body_bbox_list, hand_bbox_list):
 
 def save_pred_to_pkl(
     args, demo_type, image_path, 
-    body_bbox_list, hand_bbox_list, pred_output_list):
+    body_bbox_list, hand_bbox_list, contact_list, pred_output_list
+):
 
     smpl_type = 'smplx' if args.use_smplx else 'smpl'
     assert demo_type in ['hand', 'body', 'frank']
@@ -260,6 +259,8 @@ def save_pred_to_pkl(
     saved_data['image_path'] = osp.abspath(image_path)
     saved_data['body_bbox_list'] = body_bbox_list
     saved_data['hand_bbox_list'] = hand_bbox_list
+    if contact_list is not None:
+        saved_data['contact_list'] = contact_list
     saved_data['save_mesh'] = args.save_mesh
 
     saved_data['pred_output_list'] = list()
