@@ -32,4 +32,3 @@ python /home/junyao/LfHV/frankmocap/ss_vid_to_3d_full_pipeline.py \
 --iou_thresh=${IOU_THRESH}
 
 wait
-exit 3
