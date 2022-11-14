@@ -79,7 +79,7 @@ def parse_args():
     parser.add_argument('--save_savgol', action='store_true',
                         help='if true, filter contact state with Sav-Gol filter and save to mocap output')
     parser.add_argument('--savgol_params_path', dest='savgol_params_path', type=str, required=True,
-                        help='directory for saving something_something processed data',
+                        help='path to Sav-Gol filter params',
                         default='/home/junyao/LfHV/frankmocap/ss_utils/savgol_params.pkl')
     parser.add_argument('--debug', dest='debug', action='store_true',
                         help='if true, then will only process 10 videos for debugging')
