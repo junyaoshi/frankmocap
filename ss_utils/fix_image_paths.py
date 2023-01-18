@@ -6,7 +6,7 @@ import pickle
 from tqdm import tqdm
 
 
-data_home_dir = '/home/junyao/Datasets/something_something_robot_demos'
+data_home_dir = '/home/junyao/Datasets/something_something_processed'
 has_subdirs = True
 
 

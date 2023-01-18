@@ -1,3 +1,7 @@
+"""
+Implementation of many depth-related functionalities, including:
+depth linear fit, depth normalization params, visualizing video cam params, and etc.
+"""
 import json
 import os
 import os.path as osp
